@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+  </ItemGroup>
+
+  <!-- Prevent the parent project from recursively compiling subprojects and test projects -->
+  <ItemGroup>
+    <Compile Remove="IdentityService\**" />
+    <Compile Remove="InventoryService\**" />
+    <Compile Remove="OrderService\**" />
+    <Compile Remove="tests\**" />
+    <Content Remove="IdentityService\**" />
+    <Content Remove="InventoryService\**" />
+    <Content Remove="OrderService\**" />
+    <Content Remove="tests\**" />
+    <EmbeddedResource Remove="IdentityService\**" />
+    <EmbeddedResource Remove="InventoryService\**" />
+    <EmbeddedResource Remove="OrderService\**" />
+    <EmbeddedResource Remove="tests\**" />
+    <None Remove="IdentityService\**" />
+    <None Remove="InventoryService\**" />
+    <None Remove="OrderService\**" />
+    <None Remove="tests\**" />
+  </ItemGroup>
+
+</Project>

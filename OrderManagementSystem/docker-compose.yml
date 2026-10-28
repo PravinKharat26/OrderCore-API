@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  identity-service:
+    build:
+      context: .
+      dockerfile: IdentityService/Dockerfile
+    container_name: identity-service
+    ports:
+      - "5081:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/identity.db
+      - Jwt__Key=OrderManagementSystem_SuperSecretSecureKey_2026!#*LongEnoughForHmacSha256
+      - Jwt__Issuer=OrderManagement.Identity
+      - Jwt__Audience=OrderManagement.Api
+    volumes:
+      - identity-data:/app/data
+    networks:
+      - ordermanagement-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: InventoryService/Dockerfile
+    container_name: inventory-service
+    ports:
+      - "5082:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/inventory.db
+      - Jwt__Key=OrderManagementSystem_SuperSecretSecureKey_2026!#*LongEnoughForHmacSha256
+      - Jwt__Issuer=OrderManagement.Identity
+      - Jwt__Audience=OrderManagement.Api
+    volumes:
+      - inventory-data:/app/data
+    networks:
+      - ordermanagement-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  order-service:
+    build:
+      context: .
+      dockerfile: OrderService/Dockerfile
+    container_name: order-service
+    ports:
+      - "5083:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Data Source=/app/data/orders.db
+      - InventoryService__BaseUrl=http://inventory-service:8080/
+      - Jwt__Key=OrderManagementSystem_SuperSecretSecureKey_2026!#*LongEnoughForHmacSha256
+      - Jwt__Issuer=OrderManagement.Identity
+      - Jwt__Audience=OrderManagement.Api
+    volumes:
+      - order-data:/app/data
+    depends_on:
+      inventory-service:
+        condition: service_started
+    networks:
+      - ordermanagement-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  identity-data:
+  inventory-data:
+  order-data:
+
+networks:
+  ordermanagement-network:
+    driver: bridge
