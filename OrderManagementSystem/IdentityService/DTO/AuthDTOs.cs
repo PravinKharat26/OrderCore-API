@@ -34,13 +34,8 @@ public class RegisterRequest
 
 public class LoginRequest
 {
-<<<<<<< Updated upstream
-    [Required]
-    [EmailAddress]
-=======
     [Required(ErrorMessage = "Email is required.")]
     [EmailAddress(ErrorMessage = "Please provide a valid email address.")]
->>>>>>> Stashed changes
     public string Email { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Password is required.")]

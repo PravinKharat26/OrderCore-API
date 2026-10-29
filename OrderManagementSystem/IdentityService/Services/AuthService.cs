@@ -61,11 +61,7 @@ public class AuthService : IAuthService
             throw new AppException("A user with this username already exists.", 400);
         }
 
-<<<<<<< Updated upstream
-        // Role-Based Access Control (RBAC): Allow specifying role or default to Customer
-=======
         // 4. Role assignment (defaults to Customer, or accepts Admin/Customer)
->>>>>>> Stashed changes
         var assignedRole = Roles.Customer;
         if (!string.IsNullOrWhiteSpace(request.Role))
         {
