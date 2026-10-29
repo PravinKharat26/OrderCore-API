@@ -4,18 +4,6 @@ namespace IdentityService.DTO;
 
 public class RegisterRequest
 {
-<<<<<<< Updated upstream
-    [Required]
-    [StringLength(50, MinimumLength = 3)]
-    public string Username { get; set; } = string.Empty;
-
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; } = string.Empty;
-
-    [Required]
-    [MinLength(6, ErrorMessage = "Password must be at least 6 characters long.")]
-=======
     [Required(ErrorMessage = "Username is required.")]
     [StringLength(30, MinimumLength = 3, ErrorMessage = "Username must be between 3 and 30 characters.")]
     [RegularExpression(@"^(?!string$)(?!admin$)[a-zA-Z0-9_\-]+$", ErrorMessage = "Username cannot be 'string' or 'admin' and must contain only alphanumeric characters, underscores, or hyphens.")]
@@ -30,16 +18,10 @@ public class RegisterRequest
     [StringLength(100, MinimumLength = 8, ErrorMessage = "Password must be at least 8 characters long.")]
     [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,}$", 
         ErrorMessage = "Password must be at least 8 characters and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.")]
->>>>>>> Stashed changes
     public string Password { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Please confirm your password.")]
     [Compare("Password", ErrorMessage = "Passwords do not match.")]
-<<<<<<< Updated upstream
-    public string? ConfirmPassword { get; set; }
-
-    // Optional: Defaults to "Customer" if not passed. Allowed values: "Admin", "Customer"
-=======
     public string ConfirmPassword { get; set; } = string.Empty;
 
     /// <summary>
@@ -47,7 +29,6 @@ public class RegisterRequest
     /// Defaults to "Customer" if omitted.
     /// </summary>
     [RegularExpression("^(Admin|Customer)$", ErrorMessage = "Role must be either 'Admin' or 'Customer'.")]
->>>>>>> Stashed changes
     public string? Role { get; set; }
 }
 
