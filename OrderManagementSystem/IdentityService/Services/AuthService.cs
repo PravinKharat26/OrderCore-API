@@ -32,6 +32,25 @@ public class AuthService : IAuthService
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var normalizedUsername = request.Username.Trim();
 
+        // 1. Guard against Swagger default dummy values
+        if (string.Equals(normalizedUsername, "string", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(normalizedEmail, "user@example.com", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(request.Password, "string", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new AppException("Default placeholder values (like 'string' or 'user@example.com') cannot be registered. Please provide real account details.", 400);
+        }
+
+        // 2. Validate password complexity
+        if (request.Password.Length < 8 ||
+            !request.Password.Any(char.IsUpper) ||
+            !request.Password.Any(char.IsLower) ||
+            !request.Password.Any(char.IsDigit) ||
+            !request.Password.Any(ch => !char.IsLetterOrDigit(ch)))
+        {
+            throw new AppException("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.", 400);
+        }
+
+        // 3. Check for duplicates
         if (await _context.Users.AnyAsync(u => u.Email == normalizedEmail, cancellationToken))
         {
             throw new AppException("A user with this email address already exists.", 400);
@@ -42,7 +61,11 @@ public class AuthService : IAuthService
             throw new AppException("A user with this username already exists.", 400);
         }
 
+<<<<<<< Updated upstream
         // Role-Based Access Control (RBAC): Allow specifying role or default to Customer
+=======
+        // 4. Role assignment (defaults to Customer, or accepts Admin/Customer)
+>>>>>>> Stashed changes
         var assignedRole = Roles.Customer;
         if (!string.IsNullOrWhiteSpace(request.Role))
         {

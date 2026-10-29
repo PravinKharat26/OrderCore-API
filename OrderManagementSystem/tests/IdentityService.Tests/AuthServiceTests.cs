@@ -58,7 +58,7 @@ public class AuthServiceTests
         Assert.True(result.Success);
         Assert.NotNull(result.Data);
         Assert.Equal("mock.jwt.token", result.Data.Token);
-        Assert.Equal(Roles.Customer, result.Data.User.Role); // Never Admin
+        Assert.Equal(Roles.Customer, result.Data.User.Role);
         Assert.Equal("alice@example.com", result.Data.User.Email);
 
         var userInDb = await _context.Users.FirstOrDefaultAsync(u => u.Email == "alice@example.com");
@@ -92,6 +92,52 @@ public class AuthServiceTests
         var ex = await Assert.ThrowsAsync<AppException>(() => _authService.RegisterAsync(request));
         Assert.Equal(400, ex.StatusCode);
         Assert.Contains("email", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WeakPassword_ThrowsAppException()
+    {
+        var request = new RegisterRequest
+        {
+            Username = "weakuser",
+            Email = "weak@testdomain.com",
+            Password = "weak"
+        };
+
+        var ex = await Assert.ThrowsAsync<AppException>(() => _authService.RegisterAsync(request));
+        Assert.Equal(400, ex.StatusCode);
+        Assert.Contains("password", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_SwaggerPlaceholderValues_ThrowsAppException()
+    {
+        var request = new RegisterRequest
+        {
+            Username = "string",
+            Email = "user@example.com",
+            Password = "string"
+        };
+
+        var ex = await Assert.ThrowsAsync<AppException>(() => _authService.RegisterAsync(request));
+        Assert.Equal(400, ex.StatusCode);
+        Assert.Contains("placeholder", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithAdminRole_CreatesAdminUser()
+    {
+        var request = new RegisterRequest
+        {
+            Username = "adminuser",
+            Email = "adminuser@testdomain.com",
+            Password = "SecurePassword1!",
+            Role = "Admin"
+        };
+
+        var result = await _authService.RegisterAsync(request);
+        Assert.True(result.Success);
+        Assert.Equal(Roles.Admin, result.Data!.User.Role);
     }
 
     [Fact]
