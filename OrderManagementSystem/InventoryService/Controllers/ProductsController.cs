@@ -8,6 +8,7 @@ namespace InventoryService.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
@@ -18,10 +19,11 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieve paginated product catalog with optional search filter
+    /// Retrieve paginated product catalog with optional search filter (Authenticated users)
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(ApiResponse<PagedResult<ProductDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetProducts(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
@@ -33,11 +35,12 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Retrieve product details by ID
+    /// Retrieve product details by ID (Authenticated users)
     /// </summary>
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetProductById(int id, CancellationToken cancellationToken)
     {
         var result = await _productService.GetProductByIdAsync(id, cancellationToken);
@@ -98,6 +101,12 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> UpdateStock(int id, [FromBody] StockUpdateRequest request, CancellationToken cancellationToken)
     {
+        if (!ModelState.IsValid)
+        {
+            var errors = ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList();
+            return BadRequest(ApiResponse.FailResult("Validation failed.", errors));
+        }
+
         var result = await _productService.UpdateStockAsync(id, request.QuantityDelta, cancellationToken);
         return Ok(result);
     }

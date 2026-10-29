@@ -42,12 +42,31 @@ public class AuthService : IAuthService
             throw new AppException("A user with this username already exists.", 400);
         }
 
+        // Role-Based Access Control (RBAC): Allow specifying role or default to Customer
+        var assignedRole = Roles.Customer;
+        if (!string.IsNullOrWhiteSpace(request.Role))
+        {
+            var requestedRole = request.Role.Trim();
+            if (string.Equals(requestedRole, Roles.Admin, StringComparison.OrdinalIgnoreCase))
+            {
+                assignedRole = Roles.Admin;
+            }
+            else if (string.Equals(requestedRole, Roles.Customer, StringComparison.OrdinalIgnoreCase))
+            {
+                assignedRole = Roles.Customer;
+            }
+            else
+            {
+                throw new AppException($"Invalid role '{request.Role}'. Allowed roles are 'Admin' or 'Customer'.", 400);
+            }
+        }
+
         var user = new User
         {
             Id = Guid.NewGuid(),
             Username = normalizedUsername,
             Email = normalizedEmail,
-            Role = Roles.Customer, // Critical: Public registration always defaults to Customer
+            Role = assignedRole,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -56,7 +75,7 @@ public class AuthService : IAuthService
         await _context.Users.AddAsync(user, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("New user registered successfully: {UserId}, Email: {Email}", user.Id, user.Email);
+        _logger.LogInformation("New user registered successfully: {UserId}, Email: {Email}, Role: {Role}", user.Id, user.Email, user.Role);
 
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
 
@@ -88,7 +107,7 @@ public class AuthService : IAuthService
             throw new AppException("Invalid email or password.", 401);
         }
 
-        _logger.LogInformation("User logged in successfully: {UserId}", user.Id);
+        _logger.LogInformation("User logged in successfully: {UserId}, Role: {Role}", user.Id, user.Role);
 
         var (token, expiresAt) = _jwtTokenGenerator.GenerateToken(user);
 

@@ -17,7 +17,7 @@ services:
     volumes:
       - identity-data:/app/data
     networks:
-      - ordermanagement-network
+      - ordercore-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
@@ -35,13 +35,14 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Data Source=/app/data/inventory.db
+      - InternalApiKey=OrderManagementSystem_Internal_ApiKey_Secret_2026!
       - Jwt__Key=OrderManagementSystem_SuperSecretSecureKey_2026!#*LongEnoughForHmacSha256
       - Jwt__Issuer=OrderManagement.Identity
       - Jwt__Audience=OrderManagement.Api
     volumes:
       - inventory-data:/app/data
     networks:
-      - ordermanagement-network
+      - ordercore-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
@@ -60,6 +61,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Data Source=/app/data/orders.db
       - InventoryService__BaseUrl=http://inventory-service:8080/
+      - InternalApiKey=OrderManagementSystem_Internal_ApiKey_Secret_2026!
       - Jwt__Key=OrderManagementSystem_SuperSecretSecureKey_2026!#*LongEnoughForHmacSha256
       - Jwt__Issuer=OrderManagement.Identity
       - Jwt__Audience=OrderManagement.Api
@@ -69,7 +71,7 @@ services:
       inventory-service:
         condition: service_started
     networks:
-      - ordermanagement-network
+      - ordercore-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
@@ -83,5 +85,5 @@ volumes:
   order-data:
 
 networks:
-  ordermanagement-network:
+  ordercore-network:
     driver: bridge

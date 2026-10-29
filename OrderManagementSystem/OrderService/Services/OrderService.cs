@@ -36,6 +36,11 @@ public class OrderService : IOrderService
             throw new AppException("An order must contain at least one item.", 400);
         }
 
+        if (request.Items.GroupBy(i => i.ProductId).Any(g => g.Count() > 1))
+        {
+            throw new AppException("Duplicate products found in order items. Please combine quantities for the same product.", 400);
+        }
+
         var orderItems = new List<OrderItem>();
         decimal calculatedTotal = 0m;
 

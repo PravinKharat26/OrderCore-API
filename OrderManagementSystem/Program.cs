@@ -8,7 +8,7 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "OrderManagementSystem - Gateway & System Host",
+        Title = "OrderCore API - Gateway & Host",
         Version = "v1",
         Description = "Microservice Ecosystem Host and Service Registry Overview"
     });
@@ -27,7 +27,7 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "System Host v1");
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "OrderCore Gateway v1");
     c.RoutePrefix = "swagger";
 });
 

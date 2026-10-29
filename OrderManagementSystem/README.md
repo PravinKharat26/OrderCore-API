@@ -1,14 +1,14 @@
-# Order Management System — .NET Microservices Architecture
+# OrderCore API — Lightweight .NET 9 Microservices Backend
 
-An interview-ready, production-grade distributed **Order Management System** built with **ASP.NET Core (.NET 9)**, **Entity Framework Core**, **SQLite**, and **JWT Bearer Authentication**.
+A modular, production-patterned distributed backend core for order and inventory management built with **ASP.NET Core (.NET 9)**, **Entity Framework Core**, **SQLite**, and **JWT Bearer Authentication**.
 
-Designed for senior-level architectural clarity, independent service deployability, and local development safety without requiring Docker or external database servers.
+Designed with architectural clarity, independent service deployability, and local development safety without requiring external database servers.
 
 ---
 
 ## 1. System Architecture
 
-The ecosystem consists of three decoupled microservices and a host gateway, each maintaining **strict database ownership** (Database-per-Service pattern). Services never query or mutate each other's databases directly; all cross-service communication occurs via validated REST APIs using `IHttpClientFactory`.
+The ecosystem consists of three decoupled microservices and a lightweight gateway host, each maintaining **strict database ownership** (Database-per-Service pattern). Services never query or mutate each other's databases directly; all cross-service communication occurs via authenticated REST APIs using `IHttpClientFactory`.
 
 ```mermaid
 flowchart TD
@@ -20,7 +20,7 @@ flowchart TD
     Inventory -->|Owns| DB_Inventory[("inventory.db<br/>(Products, Stock)")]
     Orders -->|Owns| DB_Orders[("orders.db<br/>(Orders, OrderItems)")]
 
-    Orders -.->|"HTTP GET /api/internal/products/{id}/availability<br/>HTTP POST /api/internal/products/{id}/deduct"| Inventory
+    Orders -.->|"HTTP GET /api/internal/products/{id}/availability<br/>HTTP POST /api/internal/products/{id}/deduct<br/>(Header: X-Api-Key)"| Inventory
 ```
 
 ### Microservice Roles & Responsibilities
@@ -28,15 +28,15 @@ flowchart TD
 | Service | Port | Database | Primary Responsibility |
 | :--- | :--- | :--- | :--- |
 | **IdentityService** | `5081` | `identity.db` | User registration, authentication, PBKDF2 password hashing, and signed JWT issuance with role claims (`Admin`, `Customer`). |
-| **InventoryService** | `5082` | `inventory.db` | Product catalog CRUD, pagination, stock tracking, and internal availability verification endpoints. |
+| **InventoryService** | `5082` | `inventory.db` | Product catalog CRUD, pagination, stock tracking, and internal availability verification endpoints secured by `X-Api-Key`. |
 | **OrderService** | `5083` | `orders.db` | Order placement, server-side authoritative pricing, customer order history, and cancellation. |
-| **OrderManagementSystem** | `5080` | None | Gateway/Host providing system status and service discovery overview. |
+| **OrderCore.Gateway** | `5080` | None | Gateway/Host providing system status and service discovery overview. |
 
 ---
 
 ## 2. Technology Stack & Design Decisions
 
-- **C# / .NET 9 LTS**: Built with the installed .NET 9 SDK (`9.0.301`).
+- **C# / .NET 9 LTS**: Built with the modern .NET 9 SDK.
 - **Clean Architecture & Separation of Concerns**: Each microservice follows an intuitive and maintainable folder structure:
   - `Controllers/`: Thin HTTP adapters mapping routes and returning standard HTTP status codes.
   - `Entities/`: Domain models and database schema definitions.
@@ -45,8 +45,10 @@ flowchart TD
   - `Services/`: Core business logic, pricing calculations, and inter-service HTTP integration.
   - `Data/`: EF Core `DbContext` configuration and automatic database seeding.
   - `Common/`: Global exception handling middleware, unified `ApiResponse<T>`, and custom exceptions.
+  - `ServiceFilters/`: Action filters such as `ApiKeyAuthAttribute` for inter-service security.
 - **Entity Framework Core 9 & SQLite**: Zero-configuration, file-based relational storage. Each service provisions its SQLite database automatically on startup via `EnsureCreatedAsync()`.
-- **Stateless JWT Authentication**: IdentityService issues cryptographically signed JWT tokens with HMAC-SHA256. InventoryService and OrderService validate tokens locally without blocking network calls back to IdentityService.
+- **Stateless JWT Authentication & RBAC**: IdentityService issues cryptographically signed JWT tokens with HMAC-SHA256. InventoryService and OrderService validate tokens locally without blocking network calls back to IdentityService. Supports role-based authorization (`[Authorize(Roles = "Admin")]`).
+- **Inter-Service Security**: Internal inventory endpoints (`/api/internal/*`) are protected with an internal API key (`X-Api-Key`) to prevent unauthorized public callers from manipulating stock deductions.
 - **Resilient HTTP Communication**: OrderService communicates with InventoryService via typed `HttpClient` with configured timeouts and graceful degradation.
 - **xUnit & Moq Test Suite**: 22 unit tests covering business validation, role-based authorization, server-side pricing, and network fault tolerance.
 
@@ -55,9 +57,10 @@ flowchart TD
 ## 3. Directory Structure
 
 ```text
-OrderManagementSystem/
-├── OrderManagementSystem.sln                # Root solution file
+OrderCore/
+├── OrderCore.sln                            # Root solution file
 ├── OrderManagementSystem/                   # Solution workspace folder
+│   ├── OrderCore.Gateway.csproj             # Gateway & Host Project (Port 5080)
 │   ├── IdentityService/                     # Identity & JWT Microservice (Port 5081)
 │   │   ├── Controllers/                     # AuthController, HealthController
 │   │   ├── DTO/                             # RegisterRequest, LoginRequest, AuthResponse, UserDto
@@ -74,6 +77,7 @@ OrderManagementSystem/
 │   │   ├── Entities/                        # Product
 │   │   ├── Interfaces/                      # IProductService
 │   │   ├── Services/                        # ProductService
+│   │   ├── ServiceFilters/                  # ApiKeyAuthAttribute
 │   │   ├── Data/                            # InventoryDbContext, InventoryDataSeeder
 │   │   ├── Common/                          # ApiResponse, PagedResult, Exceptions
 │   │   ├── Dockerfile
@@ -89,12 +93,9 @@ OrderManagementSystem/
 │   │   ├── Dockerfile
 │   │   └── Program.cs
 │   ├── tests/
-│   │   ├── IdentityService.Tests/           # xUnit tests for Auth and JWT
+│   │   ├── IdentityService.Tests/           # xUnit tests for Auth, Roles, and JWT
 │   │   ├── InventoryService.Tests/          # xUnit tests for Products & Stock
 │   │   └── OrderService.Tests/              # xUnit tests for Orders & Resilient HTTP
-│   ├── docs/
-│   │   ├── interview-guide.md               # Senior .NET & Microservices Interview Q&A
-│   │   └── local-development.md             # Developer workflow & Docker transfer guide
 │   ├── docker-compose.yml                   # Multi-service container orchestration
 │   ├── .dockerignore
 │   ├── .gitignore
@@ -103,44 +104,50 @@ OrderManagementSystem/
 
 ---
 
-## 4. Getting Started (Local Development Without Docker)
+## 4. Getting Started (Local Development)
 
 ### Prerequisites
 - [.NET 9 SDK](https://dotnet.microsoft.com/download)
-- No Docker or database server required!
+- Visual Studio 2022, JetBrains Rider, or VS Code
 
 ### Step 1: Clone and Restore
 ```powershell
-cd c:\Professional\Personal\OrderManagementSystem\OrderManagementSystem
-dotnet restore ..\OrderManagementSystem.sln
+git clone https://github.com/PravinKharat26/OrderCore-API.git
+cd OrderCore-API
+dotnet restore OrderCore.sln
 ```
 
 ### Step 2: Run Unit Tests
 Verify all 22 tests pass:
 ```powershell
-dotnet test ..\OrderManagementSystem.sln
+dotnet test OrderCore.sln
 ```
 
 ### Step 3: Run the Microservices
-Open three separate terminal windows or run them in background:
+In Visual Studio, configure Multiple Startup Projects:
+- `IdentityService`
+- `InventoryService`
+- `OrderService`
+
+Or run via CLI in separate terminal windows:
 
 **Terminal 1 — IdentityService:**
 ```powershell
-cd IdentityService
+cd OrderManagementSystem/IdentityService
 dotnet run --launch-profile http
 ```
 *API running at: `http://localhost:5081/swagger`*
 
 **Terminal 2 — InventoryService:**
 ```powershell
-cd InventoryService
+cd OrderManagementSystem/InventoryService
 dotnet run --launch-profile http
 ```
 *API running at: `http://localhost:5082/swagger`*
 
 **Terminal 3 — OrderService:**
 ```powershell
-cd OrderService
+cd OrderManagementSystem/OrderService
 dotnet run --launch-profile http
 ```
 *API running at: `http://localhost:5083/swagger`*
@@ -197,7 +204,7 @@ Send a login request to `POST http://localhost:5081/api/auth/login`:
 ### 2. Use JWT in Swagger UI
 1. Copy the `token` string from the response.
 2. Open Swagger UI at `http://localhost:5082/swagger` or `http://localhost:5083/swagger`.
-3. Click the green **Authorize** button at the top right.
+3. Click the **Authorize** button at the top right.
 4. Enter: `Bearer <your_token>` and click **Authorize**.
 
 ### 3. Check Inventory Catalog
@@ -222,7 +229,7 @@ Send a login request to `POST http://localhost:5081/api/auth/login`:
 > [!IMPORTANT]
 > The client does **NOT** provide product prices or customer IDs!
 > - The **Customer ID** is extracted server-side from the validated JWT token (`sub` claim).
-> - The **Product Prices** are queried in real time from `InventoryService` to prevent client-side price tampering.
+> - The **Product Prices** are queried in real time from `InventoryService` via internal API key (`X-Api-Key`) to prevent client-side price tampering.
 > - `TotalAmount` is calculated server-side: `(2 * 99.99) + (1 * 199.50) = 399.48`.
 
 ### 5. Check Customer Orders
@@ -231,28 +238,25 @@ Customers will only see orders matching their authenticated `sub` ID. Admins can
 
 ---
 
-## 7. Distributed Consistency & Architectural Trade-offs
+## 7. Distributed Consistency & Architecture Notes
 
-In this initial release, inter-service coordination uses synchronous HTTP:
+In this lightweight core, inter-service coordination uses synchronous HTTP:
 1. `OrderService` queries `InventoryService` for stock availability and current pricing.
-2. `OrderService` sends a stock deduction request to `InventoryService`.
+2. `OrderService` sends a stock deduction request to `InventoryService` authenticated via `X-Api-Key`.
 3. `OrderService` persists the order to `orders.db`.
 
-### Known Limitation: Concurrency & Partial Failure
-- If two customers simultaneously attempt to buy the last remaining stock of a product, a race condition between availability check and deduction can occur without distributed locking.
-- If the network drops immediately after inventory is deducted but before the order is saved, inventory would be deducted without an order record.
-
-### Production Solution: Event-Driven Architecture (Future Roadmap)
+### Scalability Progression (Event-Driven Architecture)
+For higher throughput or async decoupling, this architecture easily extends to:
 - **Outbox Pattern**: `OrderService` saves the order and an outbox event in the same local database transaction.
-- **Message Broker (Kafka / RabbitMQ)**: A publisher publishes `OrderPlacedEvent`.
-- **Saga Pattern (Choreography / Orchestration)**: `InventoryService` consumes `OrderPlacedEvent` and reserves stock. If stock is unavailable, it publishes `StockReservationFailedEvent`, triggering a compensating transaction in `OrderService` to cancel the order.
+- **Message Broker (RabbitMQ / Kafka)**: Publishes `OrderPlacedEvent`.
+- **Saga Pattern**: `InventoryService` consumes `OrderPlacedEvent` and reserves stock asynchronously.
 
 ---
 
-## 8. Future Dockerization (Personal Laptop)
+## 8. Docker Deployment
 
-When transferring to a machine with Docker installed:
+To run all services inside containers:
 ```powershell
 docker-compose up --build
 ```
-This builds and orchestrates all 3 services on `ordermanagement-network` with persistent named volumes (`identity-data`, `inventory-data`, `order-data`). Container host ports match local ports (`5081`, `5082`, `5083`).
+This builds and orchestrates all services on `ordercore-network` with persistent named volumes (`identity-data`, `inventory-data`, `order-data`).

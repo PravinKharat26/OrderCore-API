@@ -21,9 +21,11 @@ builder.Services.AddDbContext<OrderDbContext>(options =>
 
 // 3. HTTP Client for inter-service communication to InventoryService
 var inventoryBaseUrl = builder.Configuration["InventoryService:BaseUrl"] ?? "http://localhost:5082/";
+var internalApiKey = builder.Configuration["InternalApiKey"] ?? "OrderManagementSystem_Internal_ApiKey_Secret_2026!";
 builder.Services.AddHttpClient<IInventoryClient, InventoryHttpClient>(client =>
 {
     client.BaseAddress = new Uri(inventoryBaseUrl);
+    client.DefaultRequestHeaders.Add("X-Api-Key", internalApiKey);
     client.Timeout = TimeSpan.FromSeconds(5); // Resilient timeout
 });
 
